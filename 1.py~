@@ -148,3 +148,6 @@ def get_var(inp,i,j):
 print get_var(inp,2,0)
 
 
+
+
+
