@@ -128,10 +128,6 @@ class Step:
         self.output_tmp=[]
         return self.output.pop()
 
-#if (self.inp[i][j][0]==1):
-#self.output_tmp.append([i,j])
-#else:
-
 class linkapix():
     condition = [[[]]]
     variants = [[[]]]
@@ -184,7 +180,6 @@ def getVariants(crossword):
         for j in range(crossword.width):
             if (not crossword.condition[i][j][0] == 0) and (not crossword.condition[i][j][1] == 1):
                 crossword.variants[i][j] = copy.deepcopy(Step(crossword.condition).write_output(i, j))
-                print(crossword.variants[i][j])
                 if len(crossword.variants[i][j]) == 0:
                     return False
     return True
@@ -194,17 +189,22 @@ def paint(crossword, route):
     for i in route:
         crossword[int(i / crossword.height)][i % crossword.width] = -1
 
-#функиця, которая находит первый элемент с единственным вариантом заполнения и заполняет кроссворд этим вариантом
-def paintFirstOneVariants(crossword):
-    size = crossword.width * crossword.height
-
-    for i in range(size):
-        if not len(crossword.variants[int(i / crossword.height)][i % crossword.width]) == 1:
-            continue
-
-        paint(crossword, crossword.variants[int(i / crossword.height)][i % crossword.width][0])
+#функиця, которая закрашивает маршрут
+def paintRoute(crossword, strcounter, counter, route):
+    if crossword.condition[strcounter][counter][1] == 1:
         return True
-    return False
+
+    crossword.condition[strcounter][counter][1] = 1
+    lroute = copy.deepcopy(route[0])
+    l = len(route)
+    count = 0
+    for i in lroute:
+        if crossword.condition[i[0]][i[1]][1] == 1:
+            return False
+
+        crossword.condition[i[0]][i[1]][1] = 1
+
+    return True
 
 def heurPredetect(crossword):
     for i in crossword.condition:
@@ -212,12 +212,19 @@ def heurPredetect(crossword):
             if ii[0] == 1:
                 ii[1] = 1
 
+def alreadySolved(crosswod):
+    for i in crossword.condition:
+        if (not i[0] == 0) and (i[1] == 0):
+            return False
+    return True
+
 #рекурсивная функция, основная
 def solveLinkAPix(crossword):
     newcrossword = linkapix()
     newcrossword.condition = copy.deepcopy(crossword.condition)
     newcrossword.height = copy.deepcopy(crossword.height)
     newcrossword.width = copy.deepcopy(crossword.width)
+
     #назаполняем варианты с единственными решениями
     again = True
     while again:
@@ -226,6 +233,29 @@ def solveLinkAPix(crossword):
         #комбинация ошибочна и возвращаем рекурсию на один уровень вверх
         if not getVariants(newcrossword):
             return False
+
+        for stringstrcounter in range(len(newcrossword.variants)):
+            toRemove = []
+            for counter in range(len(newcrossword.variants[stringstrcounter])):
+                if len(newcrossword.variants[stringstrcounter][counter]) == 1:
+                    if paintRoute(newcrossword, stringstrcounter, counter, newcrossword.variants[stringstrcounter][counter]):
+                        again = True
+                        toRemove.append(counter)
+                    else:
+                        return False
+            for i in toRemove:
+                newcrossword.variants[stringstrcounter][i] = []
+
+    if alreadySolved(newcrossword):
+        crossword.condition = copy.deepcopy(newcrossword.condition)
+        return True
+
+    #выбрать вариант, пробовать пока пробуется и удалять если не подошли
+
+
+
+    #for test
+    crossword.condition = copy.deepcopy(newcrossword.condition)
 
         #пока заполняется, заполняем варианты с единственным решением, по одному за итерацию цикла
         #if paintFirstOneVariants(newcrossword):
@@ -238,3 +268,7 @@ crossword.init('sample1.txt')
 heurPredetect(crossword)
 #пытаемся решить
 solved = solveLinkAPix(crossword)
+for i in crossword.condition:
+    for ii in i:
+        sys.stdout.write(str(ii[1]))
+    sys.stdout.write("\n")
