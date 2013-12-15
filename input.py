@@ -1,4 +1,6 @@
 import copy
+import sys
+sys.setrecursionlimit(100000)
 
 class Step:
     def __init__(self, inp):
@@ -181,7 +183,8 @@ def getVariants(crossword):
     for i in range(crossword.height):
         for j in range(crossword.width):
             if (not crossword.condition[i][j][0] == 0) and (not crossword.condition[i][j][1] == 1):
-                crossword.variants[i][j] = Step(crossword.condition).write_output(i, j)
+                crossword.variants[i][j] = copy.deepcopy(Step(crossword.condition).write_output(i, j))
+                print(crossword.variants[i][j])
                 if len(crossword.variants[i][j]) == 0:
                     return False
     return True
@@ -235,5 +238,8 @@ crossword.init('sample1.txt')
 heurPredetect(crossword)
 #пытаемся решить
 solved = solveLinkAPix(crossword)
-for i in crossword.condition:
+for i in crossword.variants:
     print(i);
+    print("")
+    print("")
+    print("")
