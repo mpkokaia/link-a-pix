@@ -238,8 +238,3 @@ crossword.init('sample1.txt')
 heurPredetect(crossword)
 #пытаемся решить
 solved = solveLinkAPix(crossword)
-for i in crossword.variants:
-    print(i);
-    print("")
-    print("")
-    print("")
