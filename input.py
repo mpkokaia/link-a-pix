@@ -139,42 +139,27 @@ class linkapix():
         with open(filename, 'r') as hFile:
             data = hFile.read()
 
-        tempdata = []
-        prevNumber = False
         while not data.count(' ') == 0:
             data = data.replace(' ', '')
+        data = data.split("\n")
 
         for i in data:
-            if i == '\n':
-                if not prevNumber:
-                    tempdata.append([0, 0])
-                self.condition.append(tempdata)
-                prevNumber = False
-                tempdata = []
-                continue
-
-            if not i == ',':
-                tempdata.append([int(i), 0])
-                prevNumber = True
-            else:
-                if prevNumber:
-                    prevNumber = False
+            stringData = []
+            i = i.split(",")
+            for ii in i:
+                if len(ii) == 0:
+                    stringData.append([0,0])
                 else:
-                    tempdata.append([0, 0])
-        if not prevNumber:
-            tempdata.append([0, 0])
-        self.condition.append(tempdata)
+                    stringData.append([int(ii),0])
+            self.condition.append(stringData)
+            self.width = len(stringData)
         self.condition.remove(self.condition[0])
-
-        #инициализируем массив под варианты
-        tempdata = [[]]
         self.height = len(self.condition)
-        self.width = len(self.condition[0])
+        tempdata = []
+        for i in range(self.width):
+            tempdata.append([])
         for i in range(self.height):
-            for ii in range(self.width-1):
-                tempdata.append([])
-            self.variants.append(tempdata)
-            tempdata = [[]]
+            self.variants.append(copy.deepcopy(tempdata))
         self.variants.remove(self.variants[0])
 
 #функция заполняет массив всевозможных вариантов для каждого элемента кроссворда
@@ -183,8 +168,10 @@ def getVariants(crossword):
         for j in range(crossword.width):
             if (not crossword.condition[i][j][0] == 0) and (not crossword.condition[i][j][1] == 1):
                 crossword.variants[i][j] = copy.deepcopy(Step(crossword.condition).write_output(i, j))
+                print(crossword.condition[0][2])
                 if len(crossword.variants[i][j]) == 0:
                     return False
+
     return True
 
 #функция, которая закрашивает клетки по указанному маршруту
@@ -267,6 +254,7 @@ def heurDetectFalses(crossword):
             toRemove = []
 
             if (len(crossword.variants[h][w]) == 0) and (not crossword.condition[h][w][0] == 0) and (crossword.condition[h][w][1] == 0):
+                print("ololo")
                 return False
 
     return True
@@ -284,7 +272,6 @@ def solveLinkAPix(crossword, counter):
         again = False
         #позовём функцию, которая заполнит newcrossword.variants, если она для какого то элемента не нашла варианты,
         #комбинация ошибочна и возвращаем рекурсию на один уровень вверх
-
         if not getVariants(newcrossword):
             return False
 
@@ -344,16 +331,9 @@ def solveLinkAPix(crossword, counter):
 
 crossword = linkapix()
 #читаем входной файл и парсим данные из него
-crossword.init('sample3.txt')
+crossword.init('sample2.txt')
 heurPredetect(crossword)
 #пытаемся решить
-#test
-for i in crossword.condition:
-    for ii in i:
-        sys.stdout.write(str(ii[0]))
-        sys.stdout.write(",")
-    sys.stdout.write("\n")
-#test
 solved = solveLinkAPix(crossword, 0)
 print(solved)
 for i in crossword.condition:
