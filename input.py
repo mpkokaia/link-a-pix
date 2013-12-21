@@ -141,6 +141,9 @@ class linkapix():
 
         tempdata = []
         prevNumber = False
+        while not data.count(' ') == 0:
+            data = data.replace(' ', '')
+
         for i in data:
             if i == '\n':
                 if not prevNumber:
@@ -195,10 +198,9 @@ def paintRoute(crossword, strcounter, counter, route):
         return True
 
     crossword.condition[strcounter][counter][1] = 1
-    lroute = copy.deepcopy(route[0])
     l = len(route)
     count = 0
-    for i in lroute:
+    for i in route:
         if crossword.condition[i[0]][i[1]][1] == 1:
             return False
 
@@ -212,14 +214,65 @@ def heurPredetect(crossword):
             if ii[0] == 1:
                 ii[1] = 1
 
-def alreadySolved(crosswod):
-    for i in crossword.condition:
-        if (not i[0] == 0) and (i[1] == 0):
-            return False
+def heurDetectFalses(crossword):
+    toRemove = []
+    for h in range(crossword.height):
+        for w in range(crossword.width):
+            for variant in crossword.variants[h][w]:
+                removed = False
+                #stage one - return to self point check
+                for i in variant:
+                    if (i[0] == h) and (i[1] == w):
+                        toRemove.append(variant)
+                        removed = True
+                        break
+                if removed:
+                    continue
+                #stage two - check for one point meets twice in array
+                for i in range(len(variant)):
+                    for j in range(1+i, len(variant)):
+                        if (variant[i][0] == variant[j][0]) and (variant[i][1] == variant[j][1]):
+                            toRemove.append(variant)
+                            removed = True
+                            break
+                    if removed:
+                        break
+                if removed:
+                    continue
+                #stage three - check for points already painted
+                alreadyPainted = False
+                if not crossword.condition[h][w][1] == 0:
+                    alreadyPainted = True
+                for i in variant:
+                    if not crossword.condition[i[0]][i[1]][1] == 0:
+                        if not alreadyPainted:
+                            toRemove.append(variant)
+                            removed = True
+                            break
+                    else:
+                        if alreadyPainted:
+                            toRemove.append(variant)
+                            removed = True
+                            break
+                if removed:
+                    continue
+
+                for i in range(len(variant)-1):
+                    if crossword.condition[variant[i][0]][variant[i][1]][0] > 0:
+                        toRemove.append(variant)
+                        removed = True
+                        break
+            for rem in toRemove:
+                crossword.variants[h][w].remove(rem)
+            toRemove = []
+
+            if (len(crossword.variants[h][w]) == 0) and (not crossword.condition[h][w][0] == 0) and (crossword.condition[h][w][1] == 0):
+                return False
+
     return True
 
 #рекурсивная функция, основная
-def solveLinkAPix(crossword):
+def solveLinkAPix(crossword, counter):
     newcrossword = linkapix()
     newcrossword.condition = copy.deepcopy(crossword.condition)
     newcrossword.height = copy.deepcopy(crossword.height)
@@ -231,43 +284,78 @@ def solveLinkAPix(crossword):
         again = False
         #позовём функцию, которая заполнит newcrossword.variants, если она для какого то элемента не нашла варианты,
         #комбинация ошибочна и возвращаем рекурсию на один уровень вверх
+
         if not getVariants(newcrossword):
+            return False
+
+        if not heurDetectFalses(newcrossword):
             return False
 
         for stringstrcounter in range(len(newcrossword.variants)):
             toRemove = []
-            for counter in range(len(newcrossword.variants[stringstrcounter])):
-                if len(newcrossword.variants[stringstrcounter][counter]) == 1:
-                    if paintRoute(newcrossword, stringstrcounter, counter, newcrossword.variants[stringstrcounter][counter]):
+            for numcounter in range(len(newcrossword.variants[stringstrcounter])):
+                if len(newcrossword.variants[stringstrcounter][numcounter]) == 1:
+                    if paintRoute(newcrossword, stringstrcounter, numcounter, newcrossword.variants[stringstrcounter][numcounter][0]):
                         again = True
-                        toRemove.append(counter)
+                        toRemove.append(numcounter)
                     else:
                         return False
             for i in toRemove:
                 newcrossword.variants[stringstrcounter][i] = []
 
-    if alreadySolved(newcrossword):
+    #находим первый нерешённый элемент
+    newcounter = -1
+    for i in range(1+counter, newcrossword.height*newcrossword.width):
+        if len(newcrossword.variants[i//newcrossword.height][i%newcrossword.width]) > 0:
+            newcounter = i
+            break
+
+    #а может всё уже решено
+    if newcounter == -1:
         crossword.condition = copy.deepcopy(newcrossword.condition)
         return True
 
     #выбрать вариант, пробовать пока пробуется и удалять если не подошли
+    testCrossword = linkapix()
+    testCrossword.condition = copy.deepcopy(newcrossword.condition)
+    testCrossword.width = copy.deepcopy(newcrossword.width)
+    testCrossword.height = copy.deepcopy(newcrossword.height)
+    testCrossword.variants = copy.deepcopy(newcrossword.variants)
 
+    while not len(testCrossword.variants[newcounter//testCrossword.height][newcounter%testCrossword.width]) == 0:
 
+        painted = paintRoute(testCrossword, newcounter//testCrossword.height, newcounter%testCrossword.width,
+            testCrossword.variants[newcounter//testCrossword.height][newcounter%testCrossword.width][0])
 
-    #for test
-    crossword.condition = copy.deepcopy(newcrossword.condition)
+        testCrossword.variants[newcounter//testCrossword.height][newcounter%testCrossword.width].remove(
+            testCrossword.variants[newcounter//testCrossword.height][newcounter%testCrossword.width][0])
 
-        #пока заполняется, заполняем варианты с единственным решением, по одному за итерацию цикла
-        #if paintFirstOneVariants(newcrossword):
-        #    again = True
-    #WARNING!!! функция недописана
+        if not painted:
+            testCrossword.condition = copy.deepcopy(newcrossword.condition)
+            continue
+
+        if solveLinkAPix(testCrossword, newcounter):
+            crossword.condition = copy.deepcopy(testCrossword.condition)
+            return True
+
+        testCrossword.condition = copy.deepcopy(newcrossword.condition)
+
+    return False
 
 crossword = linkapix()
 #читаем входной файл и парсим данные из него
-crossword.init('sample1.txt')
+crossword.init('sample3.txt')
 heurPredetect(crossword)
 #пытаемся решить
-solved = solveLinkAPix(crossword)
+#test
+for i in crossword.condition:
+    for ii in i:
+        sys.stdout.write(str(ii[0]))
+        sys.stdout.write(",")
+    sys.stdout.write("\n")
+#test
+solved = solveLinkAPix(crossword, 0)
+print(solved)
 for i in crossword.condition:
     for ii in i:
         sys.stdout.write(str(ii[1]))
