@@ -168,7 +168,6 @@ def getVariants(crossword):
         for j in range(crossword.width):
             if (not crossword.condition[i][j][0] == 0) and (not crossword.condition[i][j][1] == 1):
                 crossword.variants[i][j] = copy.deepcopy(Step(crossword.condition).write_output(i, j))
-                print(crossword.condition[0][2])
                 if len(crossword.variants[i][j]) == 0:
                     return False
 
@@ -185,8 +184,6 @@ def paintRoute(crossword, strcounter, counter, route):
         return True
 
     crossword.condition[strcounter][counter][1] = 1
-    l = len(route)
-    count = 0
     for i in route:
         if crossword.condition[i[0]][i[1]][1] == 1:
             return False
@@ -194,6 +191,10 @@ def paintRoute(crossword, strcounter, counter, route):
         crossword.condition[i[0]][i[1]][1] = 1
 
     return True
+
+def finishPaintRoute(crossword, strcounter, counter, route):
+    for i in route:
+        crossword.condition[i[0]][i[1]][0] = crossword.condition[strcounter][counter][0]
 
 def heurPredetect(crossword):
     for i in crossword.condition:
@@ -254,7 +255,6 @@ def heurDetectFalses(crossword):
             toRemove = []
 
             if (len(crossword.variants[h][w]) == 0) and (not crossword.condition[h][w][0] == 0) and (crossword.condition[h][w][1] == 0):
-                print("ololo")
                 return False
 
     return True
@@ -283,6 +283,7 @@ def solveLinkAPix(crossword, counter):
             for numcounter in range(len(newcrossword.variants[stringstrcounter])):
                 if len(newcrossword.variants[stringstrcounter][numcounter]) == 1:
                     if paintRoute(newcrossword, stringstrcounter, numcounter, newcrossword.variants[stringstrcounter][numcounter][0]):
+                        finishPaintRoute(newcrossword, stringstrcounter, numcounter, newcrossword.variants[stringstrcounter][numcounter][0])
                         again = True
                         toRemove.append(numcounter)
                     else:
@@ -314,29 +315,41 @@ def solveLinkAPix(crossword, counter):
         painted = paintRoute(testCrossword, newcounter//testCrossword.height, newcounter%testCrossword.width,
             testCrossword.variants[newcounter//testCrossword.height][newcounter%testCrossword.width][0])
 
-        testCrossword.variants[newcounter//testCrossword.height][newcounter%testCrossword.width].remove(
-            testCrossword.variants[newcounter//testCrossword.height][newcounter%testCrossword.width][0])
-
         if not painted:
             testCrossword.condition = copy.deepcopy(newcrossword.condition)
             continue
 
         if solveLinkAPix(testCrossword, newcounter):
+            finishPaintRoute(testCrossword, newcounter//testCrossword.height, newcounter%testCrossword.width,
+            testCrossword.variants[newcounter//testCrossword.height][newcounter%testCrossword.width][0])
             crossword.condition = copy.deepcopy(testCrossword.condition)
             return True
+
+        testCrossword.variants[newcounter//testCrossword.height][newcounter%testCrossword.width].remove(
+            testCrossword.variants[newcounter//testCrossword.height][newcounter%testCrossword.width][0])
 
         testCrossword.condition = copy.deepcopy(newcrossword.condition)
 
     return False
 
+if len(sys.argv) < 3:
+    print("Need two parameters: input and output file")
+    exit(0)
+
 crossword = linkapix()
 #читаем входной файл и парсим данные из него
-crossword.init('sample2.txt')
+crossword.init(sys.argv[1])
 heurPredetect(crossword)
 #пытаемся решить
 solved = solveLinkAPix(crossword, 0)
-print(solved)
-for i in crossword.condition:
-    for ii in i:
-        sys.stdout.write(str(ii[1]))
-    sys.stdout.write("\n")
+with open(sys.argv[2], 'w') as hOutFile:
+            if solved:
+                for i in crossword.condition:
+                    for ii in i:
+                        if ii[1] == 1:
+                            hOutFile.write(str(ii[0]))
+                        else:
+                            hOutFile.write("_")
+                    hOutFile.write("\n")
+            else:
+                hOutFile.write("Not solved")
